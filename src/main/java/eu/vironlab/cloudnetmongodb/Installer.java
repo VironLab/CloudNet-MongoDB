@@ -53,7 +53,13 @@ import de.dytanic.cloudnet.driver.database.Database;
 import de.dytanic.cloudnet.driver.event.EventListener;
 import de.dytanic.cloudnet.event.setup.SetupResponseEvent;
 import lombok.SneakyThrows;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class Installer {
@@ -96,12 +102,12 @@ public class Installer {
         this.animation.addEntry(new QuestionListEntry<>(
                 "user",
                 "Please enter the Database username",
-                new QuestionAnswerTypeInt()
+                new QuestionAnswerTypeString()
         ));
         this.animation.addEntry(new QuestionListEntry<>(
                 "password",
                 "Please enter the Database password",
-                new QuestionAnswerTypeInt()
+                new QuestionAnswerTypeString()
         ));
         this.animation.addEntry(new QuestionListEntry<>(
                 "migrate",
@@ -121,19 +127,25 @@ public class Installer {
             if ((boolean) animation.getResult("migrate")) {
                 String providerName = (String) animation.getResult("oldprovider");
                 AbstractDatabaseProvider oldProvider = CloudNet.getInstance().getServicesRegistry().getService(AbstractDatabaseProvider.class, providerName);
+                MongoDatabaseProvider mongoDatabaseProvider = new MongoDatabaseProvider(database, Executors.newSingleThreadExecutor());
                 try {
                     oldProvider.init();
+                    mongoDatabaseProvider.init();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
                 String[] tables = ((String) animation.getResult("migrationtables")).split(";");
                 for (String table : tables) {
+                    CloudNet.getInstance().getLogger().info("[MongoDB] Migrating Table: " + table + "...");
                     if (oldProvider.containsDatabase(table)) {
                         Database db = oldProvider.getDatabase(table);
                         db.keys().forEach(key -> {
+                            CloudNet.getInstance().getLogger().info("[MongoDB] Migrating Value of Key: " + key + " of table: " + table);
                             JsonDocument document = db.get(key);
-                            cloudNetMongoDB.getMongoDatabaseProvider().getDatabase(table).insert(key, document);
+                            mongoDatabaseProvider.getDatabase(table).insert(key, document);
                         });
+                    }else {
+                        CloudNet.getInstance().getLogger().warning("The Table " + table + " does not exist");
                     }
                 }
             }
@@ -151,12 +163,25 @@ public class Installer {
                     this.animation.addEntry(new QuestionListEntry<>(
                             "oldprovider",
                             "Wich provider did you have used before?",
-                            new QuestionAnswerTypeString()
+                            new QuestionAnswerTypeString() {
+                                @Override
+                                public @Nullable List<String> getCompletableAnswers() {
+                                    List<String> list = new ArrayList<>();
+                                    list.add("h2");
+                                    list.add("mysql");
+                                    return list;
+                                }
+                            }
                     ));
                     this.animation.addEntry(new QuestionListEntry<>(
                             "migrationtables",
                             "Wich tables have to be migrated? Type name;name2 and so on",
-                            new QuestionAnswerTypeString()
+                            new QuestionAnswerTypeString() {
+                                @Override
+                                public @Nullable List<String> getCompletableAnswers() {
+                                    return Arrays.asList(new String[]{"cloudnet_cloud_players;cloudNet_module_configuration;cloudnet_permission_users", "cloudnet_cloud_players;cloudNet_module_configuration"});
+                                }
+                            }
                     ));
                 }
             }

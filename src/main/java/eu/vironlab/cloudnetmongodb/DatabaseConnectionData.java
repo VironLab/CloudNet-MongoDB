@@ -48,7 +48,7 @@ public class DatabaseConnectionData {
     private String host;
     private int port;
     private String database;
-    private String username;
+    private String user;
     private String password;
 
     public static DatabaseConnectionData fromJsonDocument(JsonDocument document) {
@@ -57,7 +57,7 @@ public class DatabaseConnectionData {
     }
 
     public String toConnectionString() {
-        return "mongodb://" + username + ":" + password + "@" + host + ":" + port + "/" + database;
+        return "mongodb://" + user + ":" + password + "@" + host + ":" + port + "/" + database;
     }
 
 }

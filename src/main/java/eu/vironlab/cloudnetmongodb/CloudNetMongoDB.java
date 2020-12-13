@@ -72,14 +72,14 @@ public class CloudNetMongoDB extends NodeCloudNetModule {
     @ModuleTask(order = 126, event = ModuleLifeCycle.LOADED)
     public void initConfig() {
         if (getConfig().isEmpty()) {
-            new Installer(this);
+            registerListener(new Installer(this));
         }
     }
 
 
     @ModuleTask(order = 125, event = ModuleLifeCycle.LOADED)
     public void registerDatabaseProvider() {
-        this.mongoDatabaseProvider = new MongoDatabaseProvider(getConfig().getDocument("connectionData"), Executors.newSingleThreadExecutor());
+        this.mongoDatabaseProvider = new MongoDatabaseProvider(getConfig().getDocument("connection"), Executors.newSingleThreadExecutor());
         getRegistry().registerService(AbstractDatabaseProvider.class, "mongodb", mongoDatabaseProvider);
         getLogger().info("[MongoDB] Using the MongoDB Database Provider");
     }
